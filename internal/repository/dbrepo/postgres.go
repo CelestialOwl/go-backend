@@ -2,6 +2,7 @@ package dbrepo
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/tsawler/bookings-app/internal/models"
@@ -72,8 +73,8 @@ func (m *postgresDBRepo) InsertRoomRestriction(r models.RoomRestriction) (int, e
 	return newId, nil
 }
 
-// SearchAvailabilityByDates checks if there are any room restrictions
-func (m *postgresDBRepo) SearchAvailabilityByDates(start, end time.Time, roomID int) (bool, error) {
+// SearchAvailabilityByDatesByRoomId checks if there are any room restrictions
+func (m *postgresDBRepo) SearchAvailabilityByDatesByRoomId(start, end time.Time, roomID int) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -90,4 +91,38 @@ func (m *postgresDBRepo) SearchAvailabilityByDates(start, end time.Time, roomID 
 	} else {
 		return false, nil
 	}
+}
+
+func (m *postgresDBRepo) SearchAvailabilityForAllRooms(start, end time.Time) ([]models.Room, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	var rooms []models.Room
+
+	query := `SELECT r.id, r.room_name, r.created_at, r.updated_at FROM rooms r
+	JOIN room_restrictions rr ON r.id = rr.room_id
+	WHERE $1 < rr.end_date AND $2 > rr.start_date;`
+	rows, err := m.DB.QueryContext(ctx, query, start, end)
+
+	for rows.Next() {
+		var room models.Room
+		err := rows.Scan(
+			&room.ID,
+			&room.RoomName,
+		)
+
+		if err != nil {
+			log.Println("failed to scan into variables", err)
+			return nil, err
+		}
+
+		rooms = append(rooms, room)
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Println("error with rows", err)
+		return rooms, err
+	}
+	defer rows.Close()
+
+	return rooms, nil
 }
