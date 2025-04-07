@@ -98,9 +98,14 @@ func (m *postgresDBRepo) SearchAvailabilityForAllRooms(start, end time.Time) ([]
 	defer cancel()
 	var rooms []models.Room
 
-	query := `SELECT r.id, r.room_name, r.created_at, r.updated_at FROM rooms r
-	JOIN room_restrictions rr ON r.id = rr.room_id
-	WHERE $1 < rr.end_date AND $2 > rr.start_date;`
+	query := `
+		select
+			r.id, r.room_name
+		from
+			rooms r
+		where r.id not in 
+		(select room_id from room_restrictions rr where $1 < rr.end_date and $2 > rr.start_date);
+		`
 	rows, err := m.DB.QueryContext(ctx, query, start, end)
 
 	for rows.Next() {
@@ -122,7 +127,7 @@ func (m *postgresDBRepo) SearchAvailabilityForAllRooms(start, end time.Time) ([]
 		log.Println("error with rows", err)
 		return rooms, err
 	}
-	defer rows.Close()
+	// defer rows.Close()
 
 	return rooms, nil
 }
