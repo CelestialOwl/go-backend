@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -53,7 +54,11 @@ func (m *Repository) Home(w http.ResponseWriter, r *http.Request) {
 	// remoteIP := r.RemoteAddr
 	// m.App.Session.Put(r.Context(), "remote_ip", remoteIP)
 
-	render.Template(w, r, "home.page.tmpl", &models.TemplateData{})
+	mydata := make(map[string]string)
+	mydata["kappa"] = "hello"
+	render.Template(w, r, "home.page.tmpl", &models.TemplateData{
+		StringMap: mydata,
+	})
 }
 
 // About is the handler for the about page
@@ -443,4 +448,56 @@ func (m *Repository) BookRoom(w http.ResponseWriter, r *http.Request) {
 	// data, _ := json.MarshalIndent(mydata, " ", " ")
 	// w.Header().Set("Content-Type", "application/json")
 	// w.Write(data)
+}
+
+func (m *Repository) ShowLogin(w http.ResponseWriter, r *http.Request) {
+	render.Template(w, r, "login.page.tmpl", &models.TemplateData{
+		Form: forms.New(nil),
+	})
+}
+
+func (m *Repository) PostShowLogin(w http.ResponseWriter, r *http.Request) {
+	m.App.Session.RenewToken(r.Context())
+	err := r.ParseForm()
+	if err != nil {
+		log.Println(err)
+	}
+	email := r.Form.Get("email")
+	password := r.Form.Get("password")
+	form := forms.New(r.PostForm)
+	form.Required("email", "password")
+	form.IsEmail("email")
+
+	if !form.Valid() {
+		render.Template(w, r, "login.page.tmpl", &models.TemplateData{
+			Form: form,
+		})
+		return
+	}
+
+	id, _, err := m.DB.Authenticate(email, password)
+	fmt.Println(err, "this dskfjdsf")
+	if err != nil {
+		log.Println(err)
+
+		m.App.Session.Put(r.Context(), "error", "Invalid login credentials")
+		http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+		return
+	}
+
+	m.App.Session.Put(r.Context(), "user_id", id)
+	m.App.Session.Put(r.Context(), "flash", "Logged in successfully!")
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// Logs a user out
+func (m *Repository) Logout(w http.ResponseWriter, r *http.Request) {
+	m.App.Session.Destroy(r.Context())
+	m.App.Session.RenewToken(r.Context())
+
+	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+}
+
+func (m *Repository) AdminDashboard(w http.ResponseWriter, r *http.Request) {
+	render.Template(w, r, "admin-dashboard.page.tmpl", &models.TemplateData{})
 }
