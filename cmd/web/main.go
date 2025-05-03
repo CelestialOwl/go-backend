@@ -17,7 +17,7 @@ import (
 	"github.com/tsawler/bookings-app/internal/render"
 )
 
-const portNumber = ":8080"
+const portNumber = ":8082"
 
 var app config.AppConfig
 var session *scs.SessionManager

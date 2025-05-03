@@ -7,13 +7,16 @@ import (
 	"html/template"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/justinas/nosurf"
 	"github.com/tsawler/bookings-app/internal/config"
 	"github.com/tsawler/bookings-app/internal/models"
 )
 
-var functions = template.FuncMap{}
+var functions = template.FuncMap{
+	"humanDate": ReadableDate,
+}
 
 var pathToTemplates = "./templates"
 
@@ -22,6 +25,10 @@ var app *config.AppConfig
 // NewRenderer sets the config for the template package
 func NewRenderer(a *config.AppConfig) {
 	app = a
+}
+
+func ReadableDate(t time.Time) string {
+	return t.Format("2006-01-02")
 }
 
 // AddDefaultData adds data for all templates
