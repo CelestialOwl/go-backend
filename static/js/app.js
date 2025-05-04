@@ -65,7 +65,7 @@ function Prompt() {
             showConfirmButton = true
         } = c;
 
-        const {value: result} = await Swal.fire({
+        const { value: result } = await Swal.fire({
             title: title,
             html: msg,
             backdrop: false,
@@ -82,12 +82,7 @@ function Prompt() {
                     c.didOpen();
                 }
             },
-            preConfirm: () => {
-                return [
-                    document.getElementById('start').value,
-                    document.getElementById('end').value
-                ]
-            }
+
         })
 
         if (result) {
