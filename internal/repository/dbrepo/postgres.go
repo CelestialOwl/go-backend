@@ -3,6 +3,7 @@ package dbrepo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -422,4 +423,60 @@ func (m *postgresDBRepo) UpdateProcessedForReservation(id int, processed int) er
 	}
 
 	return nil
+}
+
+func (m *postgresDBRepo) AllRooms() ([]models.Room, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `SELECT id, room_name, created_at, updated_at FROM rooms`
+	rooms := []models.Room{}
+
+	rows, err := m.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		room := models.Room{}
+		err = rows.Scan(&room.ID, &room.RoomName, &room.CreatedAt, &room.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		rooms = append(rooms, room)
+	}
+
+	return rooms, nil
+
+}
+
+func (m *postgresDBRepo) GetRestrictionsForRoomsByDate(roomId int, start, end time.Time) ([]models.RoomRestriction, error) {
+	fmt.Println("adtesdafa", roomId, start, end)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `SELECT id, restriction_id, coalesce(reservation_id, 0) , room_id, start_date, end_date, created_at, updated_at
+		from room_restrictions
+		where room_id = $1 and
+		start_date >= $2 and
+		end_date < $3;
+	`
+	restrictions := []models.RoomRestriction{}
+
+	rows, err := m.DB.QueryContext(ctx, query, roomId, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		rt := models.RoomRestriction{}
+
+		err = rows.Scan(&rt.ID, &rt.RestrictionID, &rt.ReservationID, &rt.RoomID, &rt.StartDate, &rt.EndDate, &rt.CreatedAt, &rt.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		restrictions = append(restrictions, rt)
+	}
+
+	return restrictions, nil
+
 }
