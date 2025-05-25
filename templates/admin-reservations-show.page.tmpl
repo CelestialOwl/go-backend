@@ -17,6 +17,8 @@
         
                 <form method="post" action="/admin/reservations/{{$src}}/{{$res.ID}}" class="needs-validation" novalidate>
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <input type="hidden" name="month" value="{{index .StringMap "month"}}">
+                    <input type="hidden" name="year" value="{{index .StringMap "year"}}">
 
                     <div class="form-group mt-3">
                         <label for="first_name">First Name:</label>
@@ -54,7 +56,9 @@
                     {{else}}
                     <a href="/admin/reservations-{{$src}}" class="btn btn-warning">Cancel</a>
                     {{end}}
+                    {{if eq $res.Processed 1}}
                     <a href="#!" class="btn btn-info" onclick="processRes({{$res.ID}})">Mark as Processed</a>
+                    {{end}}
                     </div>
                     <div class="float-right">
                     <a href="#!" onclick="deleteRes({{$res.ID}})" class="btn btn-danger">Delete</a>
@@ -73,7 +77,7 @@
             msg: 'Are you sure',
             callback: function (result) {
                 if (result !== false){
-                    window.location.href = "/admin/process-reservation/{{$src}}/" + id;
+                    window.location.href = "/admin/process-reservation/{{$src}}" + id + "/do?y={{index .StringMap "year"}}&m={{index .StringMap "month"}}";
                 }
             }
         });
@@ -85,7 +89,7 @@
             msg: 'Are you sure',
             callback: function (result) {
                 if (result !== false){
-                    window.location.href = "/admin/delete-reservation/{{$src}}/" + id;
+                    window.location.href = "/admin/delete-reservation/{{$src}}/" + id  + "/do?y={{index .StringMap "year"}}&m={{index .StringMap "month"}}";
                 }
             }
         });
