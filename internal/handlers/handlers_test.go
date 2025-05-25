@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -30,6 +31,14 @@ var theTests = []struct {
 	{"ms", "/majors-suite", "GET", http.StatusOK},
 	{"sa", "/search-availability", "GET", http.StatusOK},
 	{"contact", "/contact", "GET", http.StatusOK},
+	{"non-existent", "/green/red/bag", "GET", http.StatusNotFound},
+	// new routes
+	{"login", "/user/login", "GET", http.StatusOK},
+	{"logout", "/user/logout", "GET", http.StatusOK},
+	{"dashboard", "/admin/dashboard", "GET", http.StatusOK},
+	{"new res", "/admin/reservations-new", "GET", http.StatusOK},
+	{"new res", "/admin/reservations-all", "GET", http.StatusOK},
+	{"show res", "/admin/reservations/new/1/show", "GET", http.StatusOK},
 
 	// {"post-search-availability", "/search-availability", "POST", []postData{
 	// 	{key: "start", value: "2020-01-01"},
@@ -325,7 +334,76 @@ func TestRepository_AvailabilityJSON(t *testing.T) {
 	if err != nil {
 		t.Error("failed to parse the json")
 	}
-	fmt.Println("json", j)
+}
+
+var loginTests = []struct {
+	name               string
+	email              string
+	password           string
+	expectedStatusCode int
+	expectedHTML       string
+	expectedLocation   string
+}{
+	{
+		"logintest",
+		"hassan@test.com",
+		"password",
+		http.StatusSeeOther,
+		"",
+		"/",
+	},
+	{
+		"invalid-credentials",
+		"test@test.com",
+		"kappa",
+		http.StatusSeeOther,
+		"",
+		"/user/login",
+	},
+	{
+		"invalid-data",
+		"j",
+		"test",
+		http.StatusOK,
+		`action="/user/login"`,
+		"",
+	},
+}
+
+func TestLogin(t *testing.T) {
+	for _, e := range loginTests {
+		postedData := url.Values{}
+		postedData.Add("email", e.email)
+		postedData.Add("password", "password")
+
+		// create the request
+		req, _ := http.NewRequest("POST", "/user/login", strings.NewReader(postedData.Encode()))
+		ctx := Getctx(req)
+		req = req.WithContext(ctx)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(Repo.PostShowLogin)
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != e.expectedStatusCode {
+			t.Errorf("failed %s: expected code %d, but got %d", e.name, e.expectedStatusCode, rr.Code)
+		}
+
+		if e.expectedLocation != "" {
+			actualLoc, _ := rr.Result().Location()
+			if actualLoc.String() != e.expectedLocation {
+				t.Errorf("failed %s: expected location %s, but got location %s", e.name, e.expectedLocation, actualLoc)
+			}
+		}
+
+		if e.expectedHTML != "" {
+			html := rr.Body.String()
+			if !strings.Contains(html, e.expectedHTML) {
+				t.Errorf("failed %s: expected to find %s, but did not", e.name, e.expectedHTML)
+			}
+		}
+	}
+
 }
 
 func Getctx(req *http.Request) context.Context {
